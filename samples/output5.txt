@@ -1,0 +1,16 @@
+RIGHTPAREN     )
+SEMI-COLON     ;
+ELSE           ELSE
+PRINT          PRINT
+LEFTPAREN      (
+STRING         "the mean value is negative"
+RIGHTPAREN     )
+SEMI-COLON     ;
+ENDIF          ENDIF
+SEMI-COLON     ;
+PRINT          PRINT
+LEFTPAREN      (
+STRING         "end of program"
+RIGHTPAREN     )
+SEMI-COLON     ;
+ENDOFFILE        ENDOFFILE

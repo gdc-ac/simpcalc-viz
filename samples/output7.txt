@@ -1,0 +1,72 @@
+RIGHTPAREN     )
+SEMI-COLON     ;
+ELSE           ELSE
+PRINT          PRINT
+LEFTPAREN      (
+STRING         "IMPOSSIBLE"
+RIGHTPAREN     )
+SEMI-COLON     ;
+ENDIF          ENDIF
+SEMI-COLON     ;
+IF             IF
+NUM            2
+GREATER THAN   >
+NUM            1
+AND            AND
+NUM            3
+GREATER THAN   >
+NUM            2
+COLON          :
+PRINT          PRINT
+LEFTPAREN      (
+STRING         "the first thing that I'd like to do"
+RIGHTPAREN     )
+SEMI-COLON     ;
+ELSE           ELSE
+PRINT          PRINT
+LEFTPAREN      (
+STRING         "IMPOSSIBLE"
+RIGHTPAREN     )
+SEMI-COLON     ;
+ENDIF          ENDIF
+SEMI-COLON     ;
+IF             IF
+NUM            2
+GREATER THAN   >
+NUM            1
+OR             OR
+NUM            1
+GREATER THAN   >
+NUM            2
+COLON          :
+PRINT          PRINT
+LEFTPAREN      (
+STRING         "is to save every day until eternity passes away"
+RIGHTPAREN     )
+SEMI-COLON     ;
+ELSE           ELSE
+PRINT          PRINT
+LEFTPAREN      (
+STRING         "IMPOSSIBLE"
+RIGHTPAREN     )
+SEMI-COLON     ;
+ENDIF          ENDIF
+SEMI-COLON     ;
+IF             IF
+NUM            2
+Error reading character "!"
+COLON          :
+PRINT          PRINT
+LEFTPAREN      (
+STRING         "just to spend them with you "
+RIGHTPAREN     )
+SEMI-COLON     ;
+ELSE           ELSE
+PRINT          PRINT
+LEFTPAREN      (
+STRING         "IMPOSSIBLE"
+RIGHTPAREN     )
+SEMI-COLON     ;
+ENDIF          ENDIF
+SEMI-COLON     ;
+ENDOFFILE        ENDOFFILE

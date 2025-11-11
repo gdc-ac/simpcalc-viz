@@ -1,0 +1,29 @@
+RIGHTPAREN     )
+SEMI-COLON     ;
+ENDIF          ENDIF
+SEMI-COLON     ;
+ENDIF          ENDIF
+SEMI-COLON     ;
+IDENTIFIER     x
+ASSIGN         :=
+NUM            10
+SEMI-COLON     ;
+IF             IF
+IDENTIFIER     x
+LESS THAN      <
+NUM            20
+OR             OR
+IDENTIFIER     x
+EQUAL          =
+NUM            1
+COLON          :
+PRINT          PRINT
+LEFTPAREN      (
+STRING         "value of x : "
+COMMA          ,
+IDENTIFIER     x
+RIGHTPAREN     )
+SEMI-COLON     ;
+ENDIF          ENDIF
+SEMI-COLON     ;
+ENDOFFILE        ENDOFFILE

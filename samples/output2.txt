@@ -1,0 +1,92 @@
+IDENTIFIER     abc
+IDENTIFIER     abc1
+IF             IF
+IDENTIFIER     I
+PRINT          PRINT
+ELSE           ELSE
+COLON          :
+NUM            12321
+NUM            98.76
+Error reading character ""
+NUM            76
+Error reading character "76."
+NUM            1.2e45
+NUM            9e87
+NUM            7E+8
+NUM            6E-5
+Error reading character "3.2e"
+IDENTIFIER     st
+Error reading character "3e+"
+NUM            3
+STRING         "string with &%@#$ characters +++--**"
+Error reading character ""half a stri"
+IDENTIFIER     the
+IDENTIFIER     other
+IDENTIFIER     half
+Error reading character """
+IDENTIFIER     aaa
+STRING         " + "
+IDENTIFIER     aaa
+IDENTIFIER     how
+IDENTIFIER     about
+Error reading character ""this"
+STRING         " aa // "
+IF             IF
+ELSE           ELSE
+ENDIF          ENDIF
+SQRT           SQRT
+PRINT          PRINT
+AND            AND
+OR             OR
+NOT            NOT
+IDENTIFIER     if
+IDENTIFIER     else
+IDENTIFIER     endif
+IDENTIFIER     sqrt
+IDENTIFIER     print
+IDENTIFIER     and
+IDENTIFIER     or
+IDENTIFIER     not
+RAISE          **
+MULTI          *
+MULTI          *
+PLUS           +
+PLUS           +
+MINUS          -
+DIVIDE         /
+RAISE          **
+LESS THAN      <
+EQUAL          =
+GREATER THAN   >
+GTEQUAL        >=
+LESS THAN      <
+EQUAL          =
+NOTEQUAL       !=
+Error reading character "!"
+IDENTIFIER     uch
+COLON          :
+SEMI-COLON     ;
+EQUAL          =
+ASSIGN         :=
+SEMI-COLON     ;
+IDENTIFIER     _
+IDENTIFIER     _x
+IDENTIFIER     x_
+NUM            5
+PLUS           +
+NUM            5
+PLUS           +
+NUM            5
+IDENTIFIER     a
+RAISE          **
+IDENTIFIER     b
+RAISE          **
+IDENTIFIER     c
+NUM            3
+MINUS          -
+NUM            2
+MINUS          -
+NUM            1
+IDENTIFIER     the
+IDENTIFIER     end
+ENDOFFILE        ENDOFFILE

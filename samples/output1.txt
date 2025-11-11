@@ -1,0 +1,70 @@
+ENDIF          ENDIF
+SQRT           SQRT
+PRINT          PRINT
+AND            AND
+OR             OR
+NOT            NOT
+NUM            123211231
+NUM            98.3243246
+Error reading character ""
+NUM            71
+Error reading character "73."
+Error reading character "55.2e"
+NUM            111.222e333
+Error reading character ""
+NUM            444
+NUM            9.8E+7
+PLUS           +
+NUM            6.5e4
+PLUS           +
+NUM            3e+21
+Error reading character ""
+NUM            1e1
+Error reading character ""
+Error reading character "1."
+Error reading character ""
+NUM            1
+IDENTIFIER     e
+PLUS           +
+IDENTIFIER     e
+STRING         "you are a test sentence"
+SEMI-COLON     ;
+IDENTIFIER     if
+IDENTIFIER     else
+IDENTIFIER     endif
+IDENTIFIER     sqrt
+IDENTIFIER     print
+IDENTIFIER     and
+IDENTIFIER     or
+IDENTIFIER     not
+NUM            5213
+IDENTIFIER     y
+COLON          :
+SEMI-COLON     ;
+EQUAL          =
+ASSIGN         :=
+SEMI-COLON     ;
+COLON          :
+IDENTIFIER     _x_
+NUM            5
+PLUS           +
+NUM            5
+PLUS           +
+NUM            5
+IDENTIFIER     you
+IDENTIFIER     are
+IDENTIFIER     another
+IDENTIFIER     test
+IDENTIFIER     sentence
+Error reading character ""
+NUM            1
+RAISE          **
+NUM            3
+RAISE          **
+NUM            1
+NUM            3
+MINUS          -
+NUM            4
+PLUS           +
+NUM            1
+ENDOFFILE        ENDOFFILE
