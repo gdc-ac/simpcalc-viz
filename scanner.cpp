@@ -143,10 +143,14 @@ private:
         if (position < input.size() && (input[position] == 'e' || input[position] == 'E'))
         {
             position++;
+
             if (input[position] == '+' || input[position] == '-')
                 position++;
-            else if (!isDigit(input[position]))
-                return {TokenType::ERROR, input.substr(start, position - start)};
+            if (!isDigit(input[position]))
+            {
+                position++;
+                return {TokenType::ERROR, input.substr(start, position - start - 1)};
+            }
             while (position < input.size() && isDigit(input[position]))
                 position++;
         }
@@ -202,11 +206,11 @@ private:
                 position += 2;
                 return {TokenType::GT_EQUAL, mco};
             }
-            if (mco == "!=")
-            {
-                position += 2;
-                return {TokenType::NOT_EQUAL, mco};
-            }
+            // if (mco == "!=")
+            // {
+            //     position += 2;
+            //     return {TokenType::NOT_EQUAL, mco};
+            // }
         }
 
         // single character operators
@@ -237,6 +241,15 @@ private:
             return {TokenType::EQUAL, "="};
         case '>':
             return {TokenType::GREATER_THAN, ">"};
+        case '!':
+            char next = input[position++];
+            switch (next)
+            {
+            case '=':
+                return {TokenType::NOT_EQUAL, "!="};
+            default:
+                return {TokenType::ERROR, string(1, op)};
+            }
         }
 
         return {TokenType::ERROR, string(0, op)};
