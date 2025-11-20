@@ -1,410 +1,294 @@
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <unordered_map>
-#include <vector>
-#include <filesystem>
-using namespace std;
+#include "scanner.hpp"
+#include <cctype>
 
-enum class TokenType
-{
-    IDENTIFIER,
-    NUMBER,
-    STRING,
-    ASSIGN,
-    SEMICOLON,
-    COLON,
-    COMMA,
-    LEFT_PAREN,
-    RIGHT_PAREN,
-    PLUS,
-    MINUS,
-    MULTIPLY,
-    DIVIDE,
-    RAISE,
-    LESS_THAN,
-    EQUAL,
-    GREATER_THAN,
-    LT_EQUAL,
-    GT_EQUAL,
-    NOT_EQUAL,
-    PRINT,
-    IF,
-    ELSE,
-    ENDIF,
-    SQRT,
-    AND,
-    OR,
-    NOT,
-    END_OF_FILE,
-    ERROR
-};
-
-struct Token
-{
-    TokenType type;
-    string lexeme;
-};
-
-class Scanner
-{
-private:
-    string input;
-    size_t position = 0;
-    unordered_map<string, TokenType> keywords = {
-        {"PRINT", TokenType::PRINT},
-        {"IF", TokenType::IF},
-        {"ELSE", TokenType::ELSE},
-        {"ENDIF", TokenType::ENDIF},
-        {"SQRT", TokenType::SQRT},
-        {"AND", TokenType::AND},
-        {"OR", TokenType::OR},
-        {"NOT", TokenType::NOT},
+// The scanner object takes in a string input, through which tokens are detected.
+Scanner::Scanner(const string &src) : input(src) {
+    keywords = {
+        {"PRINT", PRINT},
+        {"IF", IF},
+        {"ELSE", ELSE},
+        {"ENDIF", ENDIF},
+        {"SQRT", SQRT},
+        {"AND", AND},
+        {"OR", OR},
+        {"NOT", NOT},
     };
+}
 
-    bool isLetter(char c)
-    {
-        return isalpha(c) || c == '_';
-    }
-
-    bool isDigit(char c)
-    {
-        return c >= '0' && c <= '9';
-    }
-
-    // void skipWhitespace() {
-    //     while (position < input.size() && isspace(input[position]))
-    //     position++;
-    // }
-
-    // void skipComment() {
-    //     if (position + 1 < input.size() && input[position] == '/' && input[position+1] =='/') {
-    //         position += 2;
-    //         while (position < input.size() && input[position] != '\n')
-    //             position++;
-    //     }
-    // }
-
-    void skipWhitespaceAndComments()
-    {
-        while (true)
-        {
-            // skip whitespace
-            while (position < input.size() && isspace(input[position]))
-                position++;
-
-            // skip comments
-            if (position + 1 < input.size() && input[position] == '/' && input[position + 1] == '/')
-            {
-                position += 2;
-                while (position < input.size() && input[position] != '\n')
-                    position++;
-                continue; // check for more whitespace/comments after this line
-            }
-            break;
-        }
-    }
-
-    Token scanIdentifier()
-    {
-        size_t start = position;
-        position++; // the first character is already a letter/underscore
-        while (position < input.size() && (isLetter(input[position]) || isDigit(input[position])))
-            position++;
-
-        string word = input.substr(start, position - start);
-
-        if (keywords.count(word))
-            return {keywords[word], word};
-        return {TokenType::IDENTIFIER, word};
-    }
-
-    Token scanNumber()
-    {
-        size_t start = position;
-
-        // integer
-        while (position < input.size() && isDigit(input[position]))
-            position++;
-
-        // floating point
-        if (position < input.size() && input[position] == '.')
-        {
-            position++;
-            if (position >= input.size() || !isDigit(input[position]))
-            {
-                return {TokenType::ERROR, input.substr(start, position - start)};
-            } // fractional part
-            while (position < input.size() && isDigit(input[position]))
-                position++;
-        }
-
-        // exponential notation [digits][.digits] [e/E] [+/-/ε] [digits]
-        if (position < input.size() && (input[position] == 'e' || input[position] == 'E'))
-        {
-            position++;
-
-            if (input[position] == '+' || input[position] == '-')
-                position++;
-            if (!isDigit(input[position]))
-            {
-                position++;
-                return {TokenType::ERROR, input.substr(start, position - start - 1)};
-            }
-            while (position < input.size() && isDigit(input[position]))
-                position++;
-        }
-
-        return {TokenType::NUMBER, input.substr(start, position - start)};
-    }
-
-    Token scanString()
-    {
-        size_t start = position;
-        position++;
-
-        while (position < input.size() && input[position] != '"')
-        {
-            if (input[position] == '\n')
-                break;
-            position++;
-        }
-
-        if (position >= input.size() || input[position] != '"')
-        {
-            return {TokenType::ERROR, input.substr(start - 1, position - start + 1)};
-        }
-
-        position++;
-        string str = input.substr(start, position - start);
-        return {TokenType::STRING, str};
-    }
-
-    Token scanOperator()
-    {
-        // multi-character operators
-        if (position + 1 < input.size())
-        {
-            string mco = input.substr(position, 2);
-            if (mco == ":=")
-            {
-                position += 2;
-                return {TokenType::ASSIGN, mco};
-            }
-            if (mco == "**")
-            {
-                position += 2;
-                return {TokenType::RAISE, mco};
-            }
-            if (mco == "<=")
-            {
-                position += 2;
-                return {TokenType::LT_EQUAL, mco};
-            }
-            if (mco == ">=")
-            {
-                position += 2;
-                return {TokenType::GT_EQUAL, mco};
-            }
-            // if (mco == "!=")
-            // {
-            //     position += 2;
-            //     return {TokenType::NOT_EQUAL, mco};
-            // }
-        }
-
-        // single character operators
-        char op = input[position++];
-        switch (op)
-        {
-        case ';':
-            return {TokenType::SEMICOLON, ";"};
-        case ':':
-            return {TokenType::COLON, ":"};
-        case ',':
-            return {TokenType::COMMA, ","};
-        case '(':
-            return {TokenType::LEFT_PAREN, "("};
-        case ')':
-            return {TokenType::RIGHT_PAREN, ")"};
-        case '+':
-            return {TokenType::PLUS, "+"};
-        case '-':
-            return {TokenType::MINUS, "-"};
-        case '*':
-            return {TokenType::MULTIPLY, "*"};
-        case '/':
-            return {TokenType::DIVIDE, "/"};
-        case '<':
-            return {TokenType::LESS_THAN, "<"};
-        case '=':
-            return {TokenType::EQUAL, "="};
-        case '>':
-            return {TokenType::GREATER_THAN, ">"};
-        case '!':
-            char next = input[position++];
-            switch (next)
-            {
-            case '=':
-                return {TokenType::NOT_EQUAL, "!="};
-            default:
-                return {TokenType::ERROR, string(1, op)};
-            }
-        }
-
-        return {TokenType::ERROR, string(0, op)};
-    }
-
-public:
-    Scanner(const string &src) : input(src) {}
-
-    Token getToken()
-    {
-        while (true)
-        {
-            skipWhitespaceAndComments();
-
-            if (position >= input.size())
-                return {TokenType::END_OF_FILE, ""};
-
-            char c = input[position];
-
-            if (isLetter(c))
-                return scanIdentifier();
-
-            if (isDigit(c))
-                return scanNumber();
-
-            if (c == '"')
-                return scanString();
-
-            return scanOperator();
-        }
-    }
-};
-
-string tokenName(TokenType t)
+// Check if the current character being looked at is a digit 
+bool Scanner::isLetter(char c)
 {
-    switch (t)
+    return isalpha(c) || c == '_';
+}
+
+// Check if the current character being looked at is a digit 
+bool Scanner::isDigit(char c)
+{
+    return c >= '0' && c <= '9';
+}
+
+// Skip over any whitespaces and comments
+void Scanner::skipWhitespaceAndComments()
+{
+    while (true)
     {
-    case TokenType::IDENTIFIER:
-        return "IDENTIFIER";
-    case TokenType::NUMBER:
-        return "NUM";
-    case TokenType::STRING:
-        return "STRING";
-    case TokenType::ASSIGN:
-        return "ASSIGN";
-    case TokenType::SEMICOLON:
-        return "SEMICOLON";
-    case TokenType::COLON:
-        return "COLON";
-    case TokenType::COMMA:
-        return "COMMA";
-    case TokenType::LEFT_PAREN:
-        return "LEFT_PAREN";
-    case TokenType::RIGHT_PAREN:
-        return "RIGHT_PAREN";
-    case TokenType::PLUS:
-        return "PLUS";
-    case TokenType::MINUS:
-        return "MINUS";
-    case TokenType::MULTIPLY:
-        return "MULTIPLY";
-    case TokenType::DIVIDE:
-        return "DIVIDE";
-    case TokenType::RAISE:
-        return "RAISE";
-    case TokenType::LESS_THAN:
-        return "LESS THAN";
-    case TokenType::EQUAL:
-        return "EQUAL";
-    case TokenType::GREATER_THAN:
-        return "GREATER THAN";
-    case TokenType::LT_EQUAL:
-        return "LTEQUAL";
-    case TokenType::GT_EQUAL:
-        return "GTEQUAL";
-    case TokenType::NOT_EQUAL:
-        return "NOTEQUAL";
-    case TokenType::PRINT:
-        return "PRINT";
-    case TokenType::IF:
-        return "IF";
-    case TokenType::ELSE:
-        return "ELSE";
-    case TokenType::ENDIF:
-        return "ENDIF";
-    case TokenType::SQRT:
-        return "SQRT";
-    case TokenType::AND:
-        return "AND";
-    case TokenType::OR:
-        return "OR";
-    case TokenType::NOT:
-        return "NOT";
-    case TokenType::END_OF_FILE:
-        return "ENDOFFILE";
-    default:
-        return "Error reading character ";
+        // Skip whitespace if detected
+        while (position < input.size() && isspace(input[position]))
+            position++;
+
+        // Skip comments, if the "//" signifier is detected
+        if (position + 1 < input.size() && input[position] == '/' && input[position + 1] == '/')
+        {
+            position += 2;
+            while (position < input.size() && input[position] != '\n')
+                position++;
+            continue; // Check for more whitespaces/comments after this line
+        }
+        break;
     }
 }
 
-int main()
-{ // testing
-    for (const auto &entry : filesystem::directory_iterator("."))
+// Scan for any identifiers
+Token Scanner::scanIdentifier()
+{
+    size_t start = position;
+    position++; // the first character is already a letter/underscore
+    while (position < input.size() && (isLetter(input[position]) || isDigit(input[position])))
+        position++;
+
+    string word = input.substr(start, position - start);
+
+    if (keywords.count(word))
+        return {keywords[word], word};
+    return {IDENTIFIER, word}; // if successful, create an IDENTIFIER token 
+}
+
+// Scan for any numbers
+Token Scanner::scanNumber()
+{
+    size_t start = position;
+
+    // For integers 
+    while (position < input.size() && isDigit(input[position]))
+        position++;
+
+    // For floating points
+    if (position < input.size() && input[position] == '.')
     {
-        if (entry.path().extension() == ".txt")
+        position++;
+        if (position >= input.size() || !isDigit(input[position]))
         {
-            string inputFile = entry.path().string();
-            cout << "Scanning: " << inputFile << endl;
+            return {ERROR, input.substr(start, position - start)};
+        } // For the fractional part
+        while (position < input.size() && isDigit(input[position]))
+            position++;
+    }
 
-            ifstream file(inputFile);
-            if (!file.is_open())
-            {
-                cerr << "Failed to open file: " << inputFile << endl;
-                continue;
-            }
+    // For exponential notation [digits][.digits] [e/E] [+/-/ε] [digits]
+    if (position < input.size() && (input[position] == 'e' || input[position] == 'E'))
+    {
+        position++;
 
-            string code((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
-            file.close();
+        if (input[position] == '+' || input[position] == '-')
+            position++;
+        if (!isDigit(input[position]))
+        {
+            position++;
+            return {ERROR, input.substr(start, position - start - 1)};
+        }
+        while (position < input.size() && isDigit(input[position]))
+            position++;
+    }
 
-            Scanner scanner(code);
+    return {NUMBER, input.substr(start, position - start)};
+}
 
-            string outputFile = entry.path().stem().string() + "_scan.txt";
-            ofstream out(outputFile);
-            if (!out.is_open())
-            {
-                cerr << "Failed to create output file: " << outputFile << endl;
-                continue;
-            }
+// Scan for any strings enclosed in quotation marks
+Token Scanner::scanString()
+{
+    size_t start = position;
+    position++;
 
-            while (true)
-            {
-                Token t = scanner.getToken();
-                out << tokenName(t.type);
-                if (t.type != TokenType::END_OF_FILE)
-                {
-                    if (t.type == TokenType::ERROR)
-                    {
-                        out << "\"" << t.lexeme << "\"";
-                    }
-                    else
-                    {
-                        out << " " << t.lexeme;
-                    }
-                }
+    while (position < input.size() && input[position] != '"')
+    {
+        if (input[position] == '\n')
+            break;
+        position++;
+    }
 
-                out << "\n";
+    if (position >= input.size() || input[position] != '"')
+    {
+        return {ERROR, input.substr(start - 1, position - start + 1)};
+    }
 
-                if (t.type == TokenType::END_OF_FILE)
-                    break;
-            }
+    position++;
+    string str = input.substr(start, position - start);
+    return {STRING, str};
+}
 
-            out.close();
-            cout << "Output written to: " << outputFile << endl;
+// Scan for any operators
+Token Scanner::scanOperator()
+{
+    // For two-character operators
+    if (position + 1 < input.size())
+    {
+        string mco = input.substr(position, 2);
+        if (mco == ":=")
+        {
+            position += 2;
+            return {ASSIGN, mco};
+        }
+        if (mco == "**")
+        {
+            position += 2;
+            return {RAISE, mco};
+        }
+        if (mco == "<=")
+        {
+            position += 2;
+            return {LT_EQUAL, mco};
+        }
+        if (mco == ">=")
+        {
+            position += 2;
+            return {GT_EQUAL, mco};
         }
     }
 
-    return 0;
+    // For single-character operators
+    char op = input[position++];
+    switch (op)
+    {
+    case ';':
+        return {SEMICOLON, ";"};
+    case ':':
+        return {COLON, ":"};
+    case ',':
+        return {COMMA, ","};
+    case '(':
+        return {LEFT_PAREN, "("};
+    case ')':
+        return {RIGHT_PAREN, ")"};
+    case '+':
+        return {PLUS, "+"};
+    case '-':
+        return {MINUS, "-"};
+    case '*':
+        return {MULTIPLY, "*"};
+    case '/':
+        return {DIVIDE, "/"};
+    case '<':
+        return {LESS_THAN, "<"};
+    case '=':
+        return {EQUAL, "="};
+    case '>':
+        return {GREATER_THAN, ">"};
+    case '!': // The exclamation point is a special case as it can either be NOT_EQUAL or not valid at all.
+        char next = input[position++];
+        switch (next)
+        {
+        case '=':
+            return {NOT_EQUAL, "!="};
+        default:
+            return {ERROR, string(1, op)};
+        }
+    }
+
+    return {ERROR, string(0, op)};
+}
+
+// We define our Scanner constructor to take in a string as input
+
+// Gets a token. Whitespaces and comments are skipped over. According to the current character being checked, scan for its corresponding type of token.
+Token Scanner::getToken() {
+    Token returned_token;
+    while (true) {
+        skipWhitespaceAndComments();
+        if (position >= input.size()) {
+            returned_token = {END_OF_FILE, ""};
+            break;
+        }
+        char c = input[position];
+        if (isLetter(c)) returned_token = scanIdentifier();
+        if (isDigit(c)) returned_token = scanNumber();
+        if (c == '"') returned_token = scanString();
+        returned_token = scanOperator();
+    }
+
+    string line_output = tokenName(returned_token.type);
+    if (returned_token.type != END_OF_FILE) {
+        if (returned_token.type == ERROR)
+            line_output += "\"" + returned_token.lexeme + "\"";
+        else
+            line_output += " " + returned_token.lexeme;
+    }
+    line_outputs.push_back(line_output);
+
+    return returned_token;
+}
+
+// A function that returns a certain token type string
+string tokenName(TokenType t){
+    switch (t){
+        case IDENTIFIER:
+            return "Identifier";
+        case NUMBER:
+            return "Num";
+        case STRING:
+            return "String";
+        case ASSIGN:
+            return "Assign";
+        case SEMICOLON:
+            return "Semicolon";
+        case COLON:
+            return "Colon";
+        case COMMA:
+            return "Comma";
+        case LEFT_PAREN:
+            return "LeftParen";
+        case RIGHT_PAREN:
+            return "RightParen";
+        case PLUS:
+            return "Plus";
+        case MINUS:
+            return "Minus";
+        case MULTIPLY:
+            return "Multiply";
+        case DIVIDE:
+            return "Divide";
+        case RAISE:
+            return "Raise";
+        case LESS_THAN:
+            return "LessThan";
+        case EQUAL:
+            return "Equal";
+        case GREATER_THAN:
+            return "GreaterThan";
+        case LT_EQUAL:
+            return "LTEqual";
+        case GT_EQUAL:
+            return "GTEqual";
+        case NOT_EQUAL:
+            return "NotEqual";
+        case PRINT:
+            return "Print";
+        case IF:
+            return "If";
+        case ELSE:
+            return "Else";
+        case ENDIF:
+            return "EndIf";
+        case SQRT:
+            return "Sqrt";
+        case AND:
+            return "And";
+        case OR:
+            return "Or";
+        case NOT:
+            return "Not";
+        case END_OF_FILE:
+            return "Endoffile";
+        default:
+            return "Error ";
+    }
 }
