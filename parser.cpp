@@ -46,15 +46,54 @@ class Parser{
     void match(TokenType expected){
         if (input_token.type == expected){
             // consume the token, and move to next token
+            if (input_token.type == END_OF_FILE){
+                valid_end();
+            }
         }else{
-            // throw an error
+            error("MATCH");
         }
     }
 
     void error(string source){
+        string statement;
+        if (source == "ENDIF"){
+            statement = "Incomplete if Statement";
+        }else if (source == "REL"){
+            statement = "Missing relational operator";
+        }else if (source == "STM"){
+            statement = "Invalid Statement";
+        }else if (source == "MATCH"){
+            statement = "Symbol expected";
+        }
+        // output the statement
+    } 
 
+    void valid(TokenType type){
+        string statement;
+        switch (type){
+            case ASSIGN:
+                statement = "Assignment Statement Recognized";
+                break;
+             
+            case PRINT:
+                statement = "Print Statement Recognized";
+                break;
+             
+            case IF:
+                statement = "If Statement Begins";
+                break;
+             
+            case ENDIF:
+                statement = "If Statement Ends";
+                break;
+        }
+        // output the statement
     }
 
+    void valid_end(){
+        // output "<filename> is a valid SimpCalc program"
+    }
+    
     void Prg(){
         Blk();
         match(END_OF_FILE);
@@ -76,6 +115,7 @@ class Parser{
                 match(ASSIGN);
                 Exp();
                 match(SEMICOLON);
+                valid(ASSIGN);
                 break;
             
             case PRINT:
@@ -85,6 +125,7 @@ class Parser{
                 Argfollow();
                 match(RIGHT_PAREN);
                 match(SEMICOLON);
+                valid(PRINT);
                 break;
 
             case IF:
@@ -93,6 +134,7 @@ class Parser{
                 match(COLON);
                 Blk();
                 Iffollow();
+                valid(IF);
                 break;
             
             default:
