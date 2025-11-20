@@ -1,170 +1,408 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <unordered_map>
 #include <vector>
-#include <regex>
-#include <algorithm>
 #include <filesystem>
-
 using namespace std;
 
-// We define a token as a struct, containing two fields:
-// 1. An int ID which determines the actual ID
-// 2. A string lexeme containing the lexeme of the token
-//
-// The token struct has two methods:
-// 1. Constructor token(int a, string b) to create the tokens
-// 2. A string function getToken(int a) which returns the actual string ID of the token.
-
-struct token
+enum class TokenType
 {
-public:
-    int ID;
+    IDENTIFIER,
+    NUMBER,
+    STRING,
+    ASSIGN,
+    SEMICOLON,
+    COLON,
+    COMMA,
+    LEFT_PAREN,
+    RIGHT_PAREN,
+    PLUS,
+    MINUS,
+    MULTIPLY,
+    DIVIDE,
+    RAISE,
+    LESS_THAN,
+    EQUAL,
+    GREATER_THAN,
+    LT_EQUAL,
+    GT_EQUAL,
+    NOT_EQUAL,
+    PRINT,
+    IF,
+    ELSE,
+    ENDIF,
+    SQRT,
+    AND,
+    OR,
+    NOT,
+    END_OF_FILE,
+    ERROR
+};
+
+struct Token
+{
+    TokenType type;
     string lexeme;
-    token(int a, string b)
+};
+
+class Scanner
+{
+private:
+    string input;
+    size_t position = 0;
+    unordered_map<string, TokenType> keywords = {
+        {"PRINT", TokenType::PRINT},
+        {"IF", TokenType::IF},
+        {"ELSE", TokenType::ELSE},
+        {"ENDIF", TokenType::ENDIF},
+        {"SQRT", TokenType::SQRT},
+        {"AND", TokenType::AND},
+        {"OR", TokenType::OR},
+        {"NOT", TokenType::NOT},
+    };
+
+    bool isLetter(char c)
     {
-        ID = a;
-        lexeme = b;
+        return isalpha(c) || c == '_';
     }
-    string getToken(int c)
+
+    bool isDigit(char c)
     {
-        switch (c)
+        return c >= '0' && c <= '9';
+    }
+
+    // void skipWhitespace() {
+    //     while (position < input.size() && isspace(input[position]))
+    //     position++;
+    // }
+
+    // void skipComment() {
+    //     if (position + 1 < input.size() && input[position] == '/' && input[position+1] =='/') {
+    //         position += 2;
+    //         while (position < input.size() && input[position] != '\n')
+    //             position++;
+    //     }
+    // }
+
+    void skipWhitespaceAndComments()
+    {
+        while (true)
         {
-        case 1:
-            return "ASSIGN  ";
-        case 2:
-            return "PLUS	";
-        case 3:
-            return "MINUS	";
-        case 4:
-            return "NUM     ";
-        default:
-            return "Lexical Error reading character \"";
+            // skip whitespace
+            while (position < input.size() && isspace(input[position]))
+                position++;
+
+            // skip comments
+            if (position + 1 < input.size() && input[position] == '/' && input[position + 1] == '/')
+            {
+                position += 2;
+                while (position < input.size() && input[position] != '\n')
+                    position++;
+                continue; // check for more whitespace/comments after this line
+            }
+            break;
+        }
+    }
+
+    Token scanIdentifier()
+    {
+        size_t start = position;
+        position++; // the first character is already a letter/underscore
+        while (position < input.size() && (isLetter(input[position]) || isDigit(input[position])))
+            position++;
+
+        string word = input.substr(start, position - start);
+
+        if (keywords.count(word))
+            return {keywords[word], word};
+        return {TokenType::IDENTIFIER, word};
+    }
+
+    Token scanNumber()
+    {
+        size_t start = position;
+
+        // integer
+        while (position < input.size() && isDigit(input[position]))
+            position++;
+
+        // floating point
+        if (position < input.size() && input[position] == '.')
+        {
+            position++;
+            if (position >= input.size() || !isDigit(input[position]))
+            {
+                return {TokenType::ERROR, input.substr(start, position - start)};
+            } // fractional part
+            while (position < input.size() && isDigit(input[position]))
+                position++;
+        }
+
+        // exponential notation [digits][.digits] [e/E] [+/-/ε] [digits]
+        if (position < input.size() && (input[position] == 'e' || input[position] == 'E'))
+        {
+            position++;
+
+            if (input[position] == '+' || input[position] == '-')
+                position++;
+            if (!isDigit(input[position]))
+            {
+                position++;
+                return {TokenType::ERROR, input.substr(start, position - start - 1)};
+            }
+            while (position < input.size() && isDigit(input[position]))
+                position++;
+        }
+
+        return {TokenType::NUMBER, input.substr(start, position - start)};
+    }
+
+    Token scanString()
+    {
+        size_t start = position;
+        position++;
+
+        while (position < input.size() && input[position] != '"')
+        {
+            if (input[position] == '\n')
+                break;
+            position++;
+        }
+
+        if (position >= input.size() || input[position] != '"')
+        {
+            return {TokenType::ERROR, input.substr(start - 1, position - start + 1)};
+        }
+
+        position++;
+        string str = input.substr(start, position - start);
+        return {TokenType::STRING, str};
+    }
+
+    Token scanOperator()
+    {
+        // multi-character operators
+        if (position + 1 < input.size())
+        {
+            string mco = input.substr(position, 2);
+            if (mco == ":=")
+            {
+                position += 2;
+                return {TokenType::ASSIGN, mco};
+            }
+            if (mco == "**")
+            {
+                position += 2;
+                return {TokenType::RAISE, mco};
+            }
+            if (mco == "<=")
+            {
+                position += 2;
+                return {TokenType::LT_EQUAL, mco};
+            }
+            if (mco == ">=")
+            {
+                position += 2;
+                return {TokenType::GT_EQUAL, mco};
+            }
+            // if (mco == "!=")
+            // {
+            //     position += 2;
+            //     return {TokenType::NOT_EQUAL, mco};
+            // }
+        }
+
+        // single character operators
+        char op = input[position++];
+        switch (op)
+        {
+        case ';':
+            return {TokenType::SEMICOLON, ";"};
+        case ':':
+            return {TokenType::COLON, ":"};
+        case ',':
+            return {TokenType::COMMA, ","};
+        case '(':
+            return {TokenType::LEFT_PAREN, "("};
+        case ')':
+            return {TokenType::RIGHT_PAREN, ")"};
+        case '+':
+            return {TokenType::PLUS, "+"};
+        case '-':
+            return {TokenType::MINUS, "-"};
+        case '*':
+            return {TokenType::MULTIPLY, "*"};
+        case '/':
+            return {TokenType::DIVIDE, "/"};
+        case '<':
+            return {TokenType::LESS_THAN, "<"};
+        case '=':
+            return {TokenType::EQUAL, "="};
+        case '>':
+            return {TokenType::GREATER_THAN, ">"};
+        case '!':
+            char next = input[position++];
+            switch (next)
+            {
+            case '=':
+                return {TokenType::NOT_EQUAL, "!="};
+            default:
+                return {TokenType::ERROR, string(1, op)};
+            }
+        }
+
+        return {TokenType::ERROR, string(0, op)};
+    }
+
+public:
+    Scanner(const string &src) : input(src) {}
+
+    Token getToken()
+    {
+        while (true)
+        {
+            skipWhitespaceAndComments();
+
+            if (position >= input.size())
+                return {TokenType::END_OF_FILE, ""};
+
+            char c = input[position];
+
+            if (isLetter(c))
+                return scanIdentifier();
+
+            if (isDigit(c))
+                return scanNumber();
+
+            if (c == '"')
+                return scanString();
+
+            return scanOperator();
         }
     }
 };
 
-vector<token> tokens; // We initialize a vector of tokens to store the tokens to be included in the output file.
-
-void generateOutput(string s) // Given the current vector of tokens, write this to the corresponding output file. Close the file and clear the token vector.
+string tokenName(TokenType t)
 {
-    string out = "output"; // Using a string "output" for the name of the output file
-    string outputName = s; // Taking in the filename to be modified later on
-
-    string newOutput = regex_replace(outputName, regex("^input"), out); // Given a filename, replace "input" with "output"
-    ofstream outFile(newOutput);                                        // Make this new string the filename of the output
-
-    for (auto &a : tokens)
+    switch (t)
     {
-        if (a.ID == 0)
-        {
-            // We define an error as a special token that effectively halts the program.
-            outFile << a.getToken(a.ID) << a.lexeme << endl;
-            break;
-        }
-        else
-        {
-            // For every other token, add it to the file as normal.
-            outFile << a.getToken(a.ID) << a.lexeme << endl;
-        }
-    }
-
-    outFile.close();
-    tokens.clear();
-}
-
-void getToken(string s1) // This function gets all the tokens in a single string (input sequence)
-{
-    int counter = 0;  // For iterating over the string
-    string tempToken; // A temporary string to store the lexeme. Characters are procedurally added to this string throughout the program.
-    
-    while (counter < s1.length())
-    {
-        if (isspace(s1[counter]))
-        {
-            // Skip any whitespaces, tabs, newlines, etc.
-            counter++;
-            continue;
-        }
-        else if (s1[counter] == '=')
-        {
-            // If the current character is "=", look ahead if the next character is also "="
-            // On success, create the ASSIGN token. Otherwise, log the error.
-            tempToken += '=';
-
-            if (s1[counter + 1] == '=')
-            {
-                tempToken += '=';
-                tokens.push_back(token(1, tempToken));
-                tempToken = "";
-                counter++;
-            }
-            else
-            {
-                tempToken += "\"";
-                tokens.push_back(token(0, tempToken));
-            }
-        }
-        else if (s1[counter] == '+')
-        {
-            // If the current character is "+", create the PLUS token.
-            tokens.push_back(token(2, "+"));
-        }
-        else if (s1[counter] == '-')
-        {
-            // If the current character is "-", create the MINUS token.
-            tokens.push_back(token(3, "-"));
-        }
-        else if (isdigit(s1[counter]))
-        {
-            // If the current character is a digit, start creating the digit token.
-            tempToken += s1[counter];
-
-            // Look ahead to the next character. If any non-digit is encountered, finish creating the NUM token.
-            if (!isdigit(s1[counter + 1]))
-            {
-                tokens.push_back(token(4, tempToken));
-                tempToken = "";
-            }
-        }
-        else if (!isspace(s1[counter]) && !(s1[counter] == '=') && !(s1[counter] == '+') && !isdigit(s1[counter]))
-        {
-            // Treat every other character as an error. End the program in this case.
-            tempToken += s1[counter];
-            tempToken += "\"";
-            tokens.push_back(token(0, tempToken));
-            break;
-        }
-        counter++; // Go to the next character
+    case TokenType::IDENTIFIER:
+        return "IDENTIFIER";
+    case TokenType::NUMBER:
+        return "NUM";
+    case TokenType::STRING:
+        return "STRING";
+    case TokenType::ASSIGN:
+        return "ASSIGN";
+    case TokenType::SEMICOLON:
+        return "SEMICOLON";
+    case TokenType::COLON:
+        return "COLON";
+    case TokenType::COMMA:
+        return "COMMA";
+    case TokenType::LEFT_PAREN:
+        return "LEFT_PAREN";
+    case TokenType::RIGHT_PAREN:
+        return "RIGHT_PAREN";
+    case TokenType::PLUS:
+        return "PLUS";
+    case TokenType::MINUS:
+        return "MINUS";
+    case TokenType::MULTIPLY:
+        return "MULTIPLY";
+    case TokenType::DIVIDE:
+        return "DIVIDE";
+    case TokenType::RAISE:
+        return "RAISE";
+    case TokenType::LESS_THAN:
+        return "LESS THAN";
+    case TokenType::EQUAL:
+        return "EQUAL";
+    case TokenType::GREATER_THAN:
+        return "GREATER THAN";
+    case TokenType::LT_EQUAL:
+        return "LTEQUAL";
+    case TokenType::GT_EQUAL:
+        return "GTEQUAL";
+    case TokenType::NOT_EQUAL:
+        return "NOTEQUAL";
+    case TokenType::PRINT:
+        return "PRINT";
+    case TokenType::IF:
+        return "IF";
+    case TokenType::ELSE:
+        return "ELSE";
+    case TokenType::ENDIF:
+        return "ENDIF";
+    case TokenType::SQRT:
+        return "SQRT";
+    case TokenType::AND:
+        return "AND";
+    case TokenType::OR:
+        return "OR";
+    case TokenType::NOT:
+        return "NOT";
+    case TokenType::END_OF_FILE:
+        return "ENDOFFILE";
+    default:
+        return "Error reading character ";
     }
 }
 
-int main(int argc, char *argv[])
-{
-    // string inputName;
-
-    // string inputText = argv[1];      // Filenames are input into the program as the second command line argument, i.e. run the program by inputting "scanner inputN.txt"
-    // Get the filename and store it as a string
-
-    for (auto const &dir_entry : filesystem::directory_iterator{filesystem::current_path()})
+int main()
+{ // testing
+    for (const auto &entry : filesystem::directory_iterator("."))
     {
-        string inputText = dir_entry.path().filename().string();
-
-        if (dir_entry.path().extension() == ".txt" && regex_match(inputText, regex("^input(.*)")))
+        if (entry.path().extension() == ".txt")
         {
-            string charStream; // For storing the character stream
-            char c;            // For getting each character of the input
-            ifstream inputTokens(inputText);
+            string inputFile = entry.path().string();
+            cout << "Scanning: " << inputFile << endl;
 
-            while (inputTokens.get(c))
+            ifstream file(inputFile);
+            if (!file.is_open())
             {
-                charStream += c; // Get all text from the input file, and save this into the string charStream
+                cerr << "Failed to open file: " << inputFile << endl;
+                continue;
             }
 
-            getToken(charStream);
-            // getToken(EOF)
-            generateOutput(inputText); // Pass the name of the input file for output generation
-            inputTokens.close();
+            string code((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
+            file.close();
+
+            Scanner scanner(code);
+
+            string outputFile = entry.path().stem().string() + "_scan.txt";
+            ofstream out(outputFile);
+            if (!out.is_open())
+            {
+                cerr << "Failed to create output file: " << outputFile << endl;
+                continue;
+            }
+
+            while (true)
+            {
+                Token t = scanner.getToken();
+                out << tokenName(t.type);
+                if (t.type != TokenType::END_OF_FILE)
+                {
+                    if (t.type == TokenType::ERROR)
+                    {
+                        out << "\"" << t.lexeme << "\"";
+                    }
+                    else
+                    {
+                        out << " " << t.lexeme;
+                    }
+                }
+
+                out << "\n";
+
+                if (t.type == TokenType::END_OF_FILE)
+                    break;
+            }
+
+            out.close();
+            cout << "Output written to: " << outputFile << endl;
         }
     }
 
