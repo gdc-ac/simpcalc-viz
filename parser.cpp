@@ -45,7 +45,7 @@ class Parser{
 
     void match(TokenType expected){
         if (input_token.type == expected){
-            // consume the token, and move to next token
+            // input_token.type = Scanner.get_token() or some shit like this
             if (input_token.type == END_OF_FILE){
                 valid_end();
             }
@@ -93,7 +93,7 @@ class Parser{
     void valid_end(){
         // output "<filename> is a valid SimpCalc program"
     }
-    
+
     void Prg(){
         Blk();
         match(END_OF_FILE);
