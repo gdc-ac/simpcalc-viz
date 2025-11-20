@@ -1,135 +1,285 @@
 #include <bits/stdc++.h>
 #include <filesystem>
 #include <fstream>
+#include <scanner.cpp>
 
 using namespace std;
 
-vector<vector<string>> procedures = {
-    {"Blk", "ENDOFFILE"},
-    {"Stm", "Blk"},
-    {"Epsilon"},
-    {"IDENTIFIER", "ASSIGN", "Exp"},
-    {"IF", "Cnd", "COLON", "Blk", "Iffollow"},
-    {"COMMA", "Arg", "Argfollow"},
-    {"Epsilon"},
-    {"STRING"},
-    {"Exp"},
-    {"ENDIF", "SEMICOLON"},
-    {"ELSE", "Blk", "ENDIF", "SEMICOLON"},
-    {"Trm", "Trmfollow"},
-    {"PLUS", "Trm", "Trmfollow"},
-    {"MINUS", "Trm", "Trmfollow"},
-    {"Epsilon"},
-    {"Fac", "Facfollow"},
-    {"MULTIPLY", "Fac", "Facfollow"},
-    {"DIVIDE", "Fac", "Facfollow"},
-    {"Epsilon"},
-    {"Lit", "Litfollow"},
-    {"RAISE", "Lit", "Litfollow"},
-    {"Epsilon"},
-    {"MINUS", "Val"},
-    {"Val"},
-    {"IDENTIFIER"},
-    {"NUMBER"},
-    {"SQRT", "LEFTPAREN", "Exp", "RIGHTPAREN"},
-    {"LEFTPAREN", "Exp", "RIGHTPAREN"},
-    {"Exp", "Rel", "Exp"},
-    {"LESSTHAN"},
-    {"EQUAL"},
-    {"GREATERTHAN"},
-    {"GTEQUAL"},
-    {"NOTEQUAL"},
-    {"LTEQUAL"},
+enum class TokenType
+{
+    IDENTIFIER,
+    NUMBER,
+    STRING,
+    ASSIGN,
+    SEMICOLON,
+    COLON,
+    COMMA,
+    LEFT_PAREN,
+    RIGHT_PAREN,
+    PLUS,
+    MINUS,
+    MULTIPLY,
+    DIVIDE,
+    RAISE,
+    LESS_THAN,
+    EQUAL,
+    GREATER_THAN,
+    LT_EQUAL,
+    GT_EQUAL,
+    NOT_EQUAL,
+    PRINT,
+    IF,
+    ELSE,
+    ENDIF,
+    SQRT,
+    AND,
+    OR,
+    NOT,
+    END_OF_FILE,
+    ERROR
 };
+using enum TokenType;
 
-map<string, int> terminal_to_index = {
-    {"IDENTIFIER", 0},
-    {"NUMBER", 1},
-    {"STRING", 2},
-    {"ASSIGN", 3},
-    {"SEMICOLON", 4},
-    {"COLON", 5},
-    {"COMMA", 6},
-    {"LEFT_PAREN", 7},
-    {"RIGHT_PAREN", 8},
-    {"PLUS", 9},
-    {"MINUS", 10},
-    {"MULTIPLY", 11},
-    {"DIVIDE", 12},
-    {"RAISE", 13},
-    {"LESS_THAN", 14},
-    {"EQUAL", 15},
-    {"GREATER_THAN", 16},
-    {"LT_EQUAL", 17},
-    {"GT_EQUAL", 18},
-    {"NOT_EQUAL", 19},
-    {"PRINT", 20},
-    {"IF", 21},
-    {"ELSE", 22},
-    {"ENDIF", 23},
-    {"SQRT", 24},
-    {"AND", 25},
-    {"OR", 26},
-    {"NOT", 27},
-    {"END_OF_FILE", 28},
-    {"ERROR", 29},
-};
+class Parser{
+    Token input_token;
 
-map<string, int> non_terminal_to_index = {};
-
-void recursive_descent(vector<string> tokens, vector<vector<int>> parse_table, vector<vector<string>> procedures){
-    stack<string> token_stack;
-    token_stack.push("END_OF_FILE");
-    token_stack.push("Blk");
-    
-    int token_it = 0;
-    string current_node;
-
-    while (true){
-        current_node = token_stack.top();
-        token_stack.pop();
-
-        // check if top of stack is a terminal or a variable
-        if (terminal_to_index.find(current_node) != end(terminal_to_index)){
-            if (current_node == tokens[token_it]){
-                token_it++;
-            }else{
-                // mismatch
-            }
+    void match(TokenType expected){
+        if (input_token.type == expected){
+            // consume the token, and move to next token
         }else{
-            int procedure_index = parse_table[non_terminal_to_index[current_node]][terminal_to_index[tokens[token_it]]];
-            for (auto it=procedures[procedure_index].rbegin(); it<procedures[procedure_index].rend(); it++){
-                token_stack.push(*it); // push the procedure in the reverse order
-            }
+            // throw an error
         }
     }
-}
 
-int main(int argc, char* argv[]){
-    for (auto const &dir_entry : filesystem::directory_iterator{filesystem::current_path()})
-    {
-        string inputText = dir_entry.path().filename().string();
+    void error(string source){
+
+    }
+
+    void Prg(){
+        Blk();
+        match(END_OF_FILE);
+    }
+
+    void Blk(){
+        if (input_token.type == IDENTIFIER || input_token.type == PRINT || input_token.type == IF){
+            Stm();
+            Blk();
+        }else{
+            return;
+        }
+    }
+
+    void Stm(){
+        switch (input_token.type){
+            case IDENTIFIER:
+                match(IDENTIFIER);
+                match(ASSIGN);
+                Exp();
+                match(SEMICOLON);
+                break;
+            
+            case PRINT:
+                match(PRINT);
+                match(LEFT_PAREN);
+                Arg();
+                Argfollow();
+                match(RIGHT_PAREN);
+                match(SEMICOLON);
+                break;
+
+            case IF:
+                match(IF);
+                Cnd();
+                match(COLON);
+                Blk();
+                Iffollow();
+                break;
+            
+            default:
+                error("STM");
+                break;
+        }
+    }
+
+    void Argfollow(){
+        if (input_token.type == COMMA){
+            match(COMMA);
+            Arg();
+            Argfollow();
+        }else{
+            return;
+        }
+    }
+
+    void Arg(){
+        if (input_token.type == STRING){
+            match(STRING);
+        }else{
+            Exp();
+        }
+    }
+
+    void Iffollow(){
+        if (input_token.type == ENDIF){
+            match(ENDIF);
+            match(SEMICOLON);
+        }else if (input_token.type == ELSE){
+            match(ELSE);
+            Blk();
+            match(ENDIF);
+            match(SEMICOLON);
+        }else{
+            // error
+        }
+    }
+
+    void Exp(){
+        Trm();
+        Trmfollow();
+    }
+
+    void Trmfollow(){
+        if (input_token.type == PLUS){
+            match(PLUS);
+            Trm();
+            Trmfollow();
+        }else if (input_token.type == MINUS){
+            match(MINUS);
+            Trm();
+            Trmfollow();
+        }else{
+            return;
+        }
+    }
+
+    void Trm(){
+        Fac();
+        Facfollow();
+    }
+
+    void Facfollow(){
+        if (input_token.type == MULTIPLY){
+            match(MULTIPLY);
+            Fac();
+            Facfollow();
+        }else if (input_token.type == DIVIDE){
+            match(DIVIDE);
+            Fac();
+            Facfollow();
+        }else{
+            return;
+        }
+    }
+
+    void Fac(){
+        Lit();
+        Litfollow();
+    }
+
+    void Litfollow(){
+        if (input_token.type == RAISE){
+            match(RAISE);
+            Lit();
+            Litfollow();
+        }
+    }
+
+    void Lit(){
+        if (input_token.type == MINUS){
+            match(MINUS);
+        }
+        Val();
+    }
+
+    void Val(){
+        switch (input_token.type){
+            case IDENTIFIER:
+                match(IDENTIFIER);
+                break;
+
+            case NUMBER:
+                match(NUMBER);
+                break;
+
+            case SQRT:
+                match(SQRT);
+                match(LEFT_PAREN);
+                Exp();
+                match(RIGHT_PAREN);
+                break;
+
+            default:
+                match(LEFT_PAREN);
+                Exp();
+                match(RIGHT_PAREN);
+                break;
+        }
+    }
+
+    void Cnd(){
+        Exp();
+        Rel();
+        Exp();
+    }
+    
+    void Rel(){
+        switch(input_token.type){
+            case (LESS_THAN):
+                match(LESS_THAN);
+                break;
+
+            case (EQUAL):
+                match(EQUAL);
+                break;
+
+            case (GREATER_THAN):
+                match(GREATER_THAN);
+                break;
+
+            case (GT_EQUAL):
+                match(GT_EQUAL);
+                break;
+
+            case (NOT_EQUAL):
+                match(NOT_EQUAL);
+                break;
+
+            case (LT_EQUAL):
+                match(LT_EQUAL);
+                break;
+            
+            default:
+                error("REL");
+        }
+    }
+};
+
+
+// int main(int argc, char* argv[]){
+//     for (auto const &dir_entry : filesystem::directory_iterator{filesystem::current_path()})
+//     {
+//         string inputText = dir_entry.path().filename().string();
         
-        if (dir_entry.path().extension() == ".txt" && regex_search(inputText, regex("output_scan")))
-        {
-            string baseName = dir_entry.path().stem().string();
-            cout << baseName << endl;
+//         if (dir_entry.path().extension() == ".txt" && regex_search(inputText, regex("output_scan")))
+//         {
+//             string baseName = dir_entry.path().stem().string();
+//             cout << baseName << endl;
 
-            ifstream fin(dir_entry.path());
-            string line, token;
-            int i = 0;
-            vector<string> tokens;
-            while (getline(fin, line)){
-                istringstream iss(line);
-                iss >> token;
-                tokens.push_back(token);
-                cout << i << " " << token << endl;
-                i++;
-            }
-        }
-    }
+//             ifstream fin(dir_entry.path());
+//             string line, token;
+//             int i = 0;
+//             vector<string> tokens;
+//             while (getline(fin, line)){
+//                 istringstream iss(line);
+//                 iss >> token;
+//                 tokens.push_back(token);
+//                 cout << i << " " << token << endl;
+//                 i++;
+//             }
+//         }
+//     }
 
-    for (auto x :  procedures)
-        {for (auto y : x) cout << y << " ";
-        cout << endl;}
-}
+//     // for (auto x :  productions)
+//     //     {for (auto y : x) cout << y << " ";
+//     //     cout << endl;}
+// }
