@@ -179,7 +179,7 @@ private:
         if (errorFlag) return;
         if (current().type == expected) nextToken();
         else {
-            outParse << "Parsex Error: " << tokenName(expected) << " expected.";
+            outParse << "Parse Error: " << tokenName(expected) << " expected.";
             errorFlag = true;
         }
     }
