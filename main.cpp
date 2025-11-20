@@ -233,7 +233,7 @@ private:
                 Iffollow(); 
                 break;
             default: 
-                outParse << "Syntax Error: Invalid Statement\n"; 
+                outParse << "Invalid Statement\n"; 
                 errorFlag=true; 
                 break;
         }
@@ -363,7 +363,7 @@ private:
             case TokenType::GT_EQUAL: match(TokenType::GT_EQUAL); break;
             case TokenType::NOT_EQUAL: match(TokenType::NOT_EQUAL); break;
             case TokenType::LT_EQUAL: match(TokenType::LT_EQUAL); break;
-            default: outParse << "Syntax Error: Missing relational operator\n"; errorFlag=true; break;
+            default: outParse << "Missing relational operator\n"; errorFlag=true; break;
         }
     }
 
