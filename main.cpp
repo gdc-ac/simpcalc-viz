@@ -6,6 +6,7 @@
 #include <vector>
 using namespace std;
 
+// We use an enumerator for all token types.
 enum class TokenType {
     IDENTIFIER, NUMBER, STRING, ASSIGN, SEMICOLON, COLON, COMMA,
     LEFT_PAREN, RIGHT_PAREN, PLUS, MINUS, MULTIPLY, DIVIDE, RAISE,
@@ -13,11 +14,13 @@ enum class TokenType {
     PRINT, IF, ELSE, ENDIF, SQRT, AND, OR, NOT, END_OF_FILE, ERROR
 };
 
+// We define a token as a struct with two fields: a TokenType and a string containing its lexeme.
 struct Token {
     TokenType type;
     string lexeme;
 };
 
+// A string function that returns the type of token 
 string tokenName(TokenType t) {
     switch(t){
         case TokenType::IDENTIFIER: return "Identifier"; case TokenType::NUMBER: return "Number";
@@ -38,24 +41,28 @@ string tokenName(TokenType t) {
     }
 }
 
+// We define a scanner module that has different functions for retrieving tokens.
 class Scanner {
 private:
-    string input;
-    size_t position = 0;
+    string input; // Input string to the scanner
+    size_t position = 0; // The start of the string 
     unordered_map<string, TokenType> keywords = {
         {"PRINT", TokenType::PRINT}, {"IF", TokenType::IF}, {"ELSE", TokenType::ELSE},
         {"ENDIF", TokenType::ENDIF}, {"SQRT", TokenType::SQRT}, {"AND", TokenType::AND},
         {"OR", TokenType::OR}, {"NOT", TokenType::NOT}
     };
 
+    // Check if the current character of the string is a letter 
     bool isLetter(char c) { return isalpha(c) || c == '_'; }
+    // Check if the current character of the string is a digit
     bool isDigit(char c) { return isdigit(c); }
 
+    // Skip all whitespaces and comments
     void skipWhitespaceAndComments() {
         while (true) {
             while (position < input.size() && isspace(input[position])) position++;
             if (position + 1 < input.size() && input[position] == '/' && input[position+1] == '/') {
-                position += 2;
+                position += 2; // Checking the start of comments by "//"
                 while (position < input.size() && input[position] != '\n') position++;
                 continue;
             }
@@ -63,6 +70,7 @@ private:
         }
     }
 
+    // Scanning for any identifier tokens
     Token scanIdentifier() {
         size_t start = position++;
         while (position < input.size() && (isLetter(input[position]) || isDigit(input[position]))) position++;
@@ -71,14 +79,17 @@ private:
         return {TokenType::IDENTIFIER, word};
     }
 
+    // Scanning for any numbers
     Token scanNumber() {
         size_t start = position;
         while (position < input.size() && isDigit(input[position])) position++;
+        // Checking for decimal notation
         if (position < input.size() && input[position] == '.') {
             position++;
             if (position >= input.size() || !isDigit(input[position])) return {TokenType::ERROR, input.substr(start, position-start)};
             while (position < input.size() && isDigit(input[position])) position++;
         }
+        // Checking for exponential notation
         if (position < input.size() && (input[position]=='e' || input[position]=='E')) {
             position++;
             if (position < input.size() && (input[position]=='+' || input[position]=='-')) position++;
@@ -88,6 +99,7 @@ private:
         return {TokenType::NUMBER, input.substr(start, position-start)};
     }
 
+    // Scanning for any strings
     Token scanString() {
         size_t start = position++;
         while (position < input.size() && input[position] != '"') {
@@ -99,7 +111,9 @@ private:
         return {TokenType::STRING, input.substr(start, position-start)};
     }
 
+    // Scanning for any operators
     Token scanOperator() {
+        // Scanning for two-character operators
         if (position + 1 < input.size()) {
             string mco = input.substr(position, 2);
             if (mco==":="){ position+=2; return {TokenType::ASSIGN, mco}; }
@@ -107,6 +121,7 @@ private:
             if (mco=="<="){ position+=2; return {TokenType::LT_EQUAL, mco}; }
             if (mco==">="){ position+=2; return {TokenType::GT_EQUAL, mco}; }
         }
+        // Scanning for single-character operators
         char op = input[position++];
         switch(op){
             case ';': return {TokenType::SEMICOLON, ";"}; case ':': return {TokenType::COLON, ":"};
@@ -115,13 +130,15 @@ private:
             case '-': return {TokenType::MINUS, "-"}; case '*': return {TokenType::MULTIPLY, "*"};
             case '/': return {TokenType::DIVIDE, "/"}; case '<': return {TokenType::LESS_THAN, "<"};
             case '=': return {TokenType::EQUAL, "="}; case '>': return {TokenType::GREATER_THAN, ">"};
-            case '!': 
+            case '!':
+                // The "!" character is a special case as it is either (1) a NOT_EQUAL token or (2) an error  
                 if (position < input.size() && input[position]=='='){ position++; return {TokenType::NOT_EQUAL, "!="}; }
                 else return {TokenType::ERROR, "!"};
         }
         return {TokenType::ERROR, string(1, op)};
     }
 
+// Construct
 public:
     Scanner(const string &src) : input(src) {}
     
@@ -167,42 +184,157 @@ private:
         }
     }
 
-    void Prg() { Blk(); if(!errorFlag){ match(TokenType::END_OF_FILE); if(!errorFlag) outParse << filename << " is a valid SimpCalc program\n"; } }
-    void Blk() { while(!errorFlag && (current().type==TokenType::IDENTIFIER || current().type==TokenType::PRINT || current().type==TokenType::IF)) Stm(); }
+    void Prg() { 
+        Blk(); 
+        if(!errorFlag){ 
+            match(TokenType::END_OF_FILE); 
+            if(!errorFlag) 
+                outParse << filename << " is a valid SimpCalc program\n"; 
+        } 
+    }
+
+    void Blk() {
+         while(!errorFlag &&(
+                current().type==TokenType::IDENTIFIER || 
+                current().type==TokenType::PRINT || 
+                current().type==TokenType::IF
+            )) 
+                Stm(); 
+    }
 
     void Stm() {
         if (errorFlag) return;
         switch(current().type){
             case TokenType::IDENTIFIER:
-                match(TokenType::IDENTIFIER); match(TokenType::ASSIGN); Exp(); match(TokenType::SEMICOLON);
-                if(!errorFlag) outParse << "Assignment Statement Recognized\n"; break;
+                match(TokenType::IDENTIFIER); 
+                match(TokenType::ASSIGN); 
+                Exp(); 
+                match(TokenType::SEMICOLON);
+                if(!errorFlag) 
+                    outParse << "Assignment Statement Recognized\n"; 
+                break;
             case TokenType::PRINT:
-                match(TokenType::PRINT); match(TokenType::LEFT_PAREN); Arg(); Argfollow();
-                match(TokenType::RIGHT_PAREN); match(TokenType::SEMICOLON);
-                if(!errorFlag) outParse << "Print Statement Recognized\n"; break;
+                match(TokenType::PRINT);
+                match(TokenType::LEFT_PAREN); 
+                Arg();
+                Argfollow();
+                match(TokenType::RIGHT_PAREN);
+                match(TokenType::SEMICOLON);
+                if(!errorFlag) 
+                    outParse << "Print Statement Recognized\n"; 
+                break;
             case TokenType::IF:
-                match(TokenType::IF); if(!errorFlag) outParse << "If Statement Begins\n";
-                Cnd(); match(TokenType::COLON); Blk(); Iffollow(); break;
-            default: outParse << "Syntax Error: Invalid Statement\n"; errorFlag=true; break;
+                match(TokenType::IF); 
+                if(!errorFlag) 
+                    outParse << "If Statement Begins\n";
+                Cnd();
+                match(TokenType::COLON);
+                Blk(); 
+                Iffollow(); 
+                break;
+            default: 
+                outParse << "Syntax Error: Invalid Statement\n"; 
+                errorFlag=true; 
+                break;
         }
     }
 
-    void Argfollow(){ if(!errorFlag && current().type==TokenType::COMMA){ match(TokenType::COMMA); Arg(); Argfollow(); } }
-    void Arg(){ if(!errorFlag){ if(current().type==TokenType::STRING) match(TokenType::STRING); else Exp(); } }
+    void Argfollow(){ 
+        if(!errorFlag && current().type==TokenType::COMMA){ 
+            match(TokenType::COMMA); 
+            Arg(); 
+            Argfollow(); 
+        } 
+    }
+    
+    void Arg(){ 
+        if(!errorFlag){ 
+            if(current().type==TokenType::STRING) 
+                match(TokenType::STRING); 
+            else Exp(); 
+        } 
+    }
 
     void Iffollow(){
         if(errorFlag) return;
-        if(current().type==TokenType::ENDIF){ match(TokenType::ENDIF); match(TokenType::SEMICOLON); if(!errorFlag) outParse << "If Statement Ends\n"; }
-        else if(current().type==TokenType::ELSE){ match(TokenType::ELSE); Blk(); match(TokenType::ENDIF); match(TokenType::SEMICOLON); if(!errorFlag) outParse << "If Statement Ends\n"; }
+        if(current().type==TokenType::ENDIF){ 
+            match(TokenType::ENDIF); 
+            match(TokenType::SEMICOLON); 
+            if(!errorFlag)
+                outParse << "If Statement Ends\n"; 
+        } else if(current().type==TokenType::ELSE){ 
+            match(TokenType::ELSE); 
+            Blk(); 
+            match(TokenType::ENDIF); 
+            match(TokenType::SEMICOLON); 
+            if(!errorFlag) 
+                outParse << "If Statement Ends\n"; 
+        }
     }
 
-    void Exp(){ if(!errorFlag){ Trm(); Trmfollow(); } }
-    void Trmfollow(){ if(!errorFlag){ if(current().type==TokenType::PLUS){ match(TokenType::PLUS); Trm(); Trmfollow(); } else if(current().type==TokenType::MINUS){ match(TokenType::MINUS); Trm(); Trmfollow(); } } }
-    void Trm(){ if(!errorFlag){ Fac(); Facfollow(); } }
-    void Facfollow(){ if(!errorFlag){ if(current().type==TokenType::MULTIPLY){ match(TokenType::MULTIPLY); Fac(); Facfollow(); } else if(current().type==TokenType::DIVIDE){ match(TokenType::DIVIDE); Fac(); Facfollow(); } } }
-    void Fac(){ if(!errorFlag){ Lit(); Litfollow(); } }
-    void Litfollow(){ if(!errorFlag && current().type==TokenType::RAISE){ match(TokenType::RAISE); Lit(); Litfollow(); } }
-    void Lit(){ if(!errorFlag){ if(current().type==TokenType::MINUS) match(TokenType::MINUS); Val(); } }
+    void Exp(){ 
+        if(!errorFlag){
+            Trm(); 
+            Trmfollow(); 
+        } 
+    }
+
+    void Trmfollow(){ 
+        if(!errorFlag){ 
+            if(current().type==TokenType::PLUS){ 
+                match(TokenType::PLUS); 
+                Trm(); 
+                Trmfollow(); 
+            } else if(current().type==TokenType::MINUS){ 
+                match(TokenType::MINUS); 
+                Trm(); 
+                Trmfollow(); 
+            } 
+        } 
+    }
+
+    void Trm(){ 
+        if(!errorFlag){ 
+            Fac(); 
+            Facfollow(); 
+        } 
+    }
+
+    void Facfollow(){ 
+        if(!errorFlag){ 
+            if(current().type==TokenType::MULTIPLY){ 
+                match(TokenType::MULTIPLY); 
+                Fac(); 
+                Facfollow(); 
+            } else if(current().type==TokenType::DIVIDE){ 
+                match(TokenType::DIVIDE);
+                Fac(); 
+                Facfollow(); 
+            } 
+        } 
+    }
+    
+    void Fac(){ 
+        if(!errorFlag){ 
+            Lit(); 
+            Litfollow(); 
+        } 
+    }
+    
+    void Litfollow(){ 
+        if(!errorFlag && current().type==TokenType::RAISE){ 
+            match(TokenType::RAISE); 
+            Lit(); 
+            Litfollow(); 
+        } 
+    }
+
+    void Lit(){ if(!errorFlag){ 
+        if(current().type==TokenType::MINUS) 
+            match(TokenType::MINUS); 
+            Val(); 
+        } 
+    }
 
     void Val(){
         if(errorFlag) return;
@@ -214,7 +346,14 @@ private:
         }
     }
 
-    void Cnd(){ if(!errorFlag){ Exp(); Rel(); Exp(); } }
+    void Cnd(){ 
+        if(!errorFlag){ 
+            Exp(); 
+            Rel(); 
+            Exp(); 
+        } 
+    }
+    
     void Rel(){
         if(errorFlag) return;
         switch(current().type){
@@ -245,8 +384,13 @@ int main() {
             file.close();
 
             string stem = entry.path().stem().string();
-            ofstream outScan(stem + "_scan.txt");
-            ofstream outParse(stem + "_parse.txt");
+
+            size_t lastUnderscore = stem.find_last_of('_');
+            string number = stem.substr(lastUnderscore + 1);
+
+            ofstream outScan("sample_output_scan_" + number + ".txt");
+            ofstream outParse("sample_output_parse_" + number + ".txt");
+
             if(!outScan.is_open() || !outParse.is_open()) continue;
 
             Scanner scanner(code);
